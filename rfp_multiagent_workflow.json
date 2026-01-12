@@ -1,0 +1,695 @@
+{
+  "name": "EY_ByTech",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/rfp-analyse",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -160,
+        -272
+      ],
+      "id": "26c33aef-3fe6-4c99-aa63-d50d0bdae24c",
+      "name": "Webhook",
+      "webhookId": "febe15ea-b8a6-49e2-9279-d2d0acf07788"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=RFP TEXT:\n{{ $json.body.rfp_text }}\n\nGiven:\nproject_name = \"{{ $json.body.project_name || '' }}\",\ncustomer_name = \"{{ $json.body.client || '' }}\",\ndeadline = \"{{ $json.body.deadline || '' }}\"\n\nExtract and fill the rfp_metadata as best as you can.\n\nReturn ONLY valid JSON in the following format:\n\n{\n  \"rfp_metadata\": {\n    \"project_name\": \"\",\n    \"customer_name\": \"\",\n    \"deadline\": \"\",\n    \"summary\": \"\"\n  }\n}\n",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an RFP Analyst Agent.  TASK: Read the RFP text and return ONLY a valid JSON object.  RFP TEXT: {{ $json.rfp_text }}  RULES (STRICT): - Output MUST be valid JSON only. - Do NOT use markdown, backticks, or explanations. - Output MUST contain BOTH `rfp_metadata` AND `requirements`. - If no requirements are found, return `\"requirements\": []`. - Use EXACT field names as shown below. - Generate req_id as REQ-1, REQ-2, etc. - Set must_have = true only for mandatory clauses (must, shall, required).  RETURN JSON IN THIS EXACT FORMAT:  {   \"rfp_metadata\": {     \"rfp_id\": \"{{ $json.rfp_id || '' }}\",     \"customer_name\": \"{{ $json.client || '' }}\",     \"project_name\": \"\",     \"submission_deadline\": \"\",     \"industry\": \"FMCG\",     \"notes\": \"\"   },   \"requirements\": [     {       \"req_id\": \"REQ-1\",       \"section\": \"\",       \"clause_ref\": \"\",       \"description\": \"\",       \"must_have\": true,       \"category\": \"\",       \"target_value\": \"\",       \"unit\": \"\",       \"priority\": \"High\"     }   ] } Return ONLY raw JSON.  No markdown. No backticks. No explanations. No extra keys. No wrapping text.  JSON MUST START WITH { AND END WITH }.  RFP TEXT: {{ $json.rfp_text }}  Return exactly this structure and fill values from the RFP:  {   \"rfp_metadata\": {     \"rfp_id\": \"{{ $json.rfp_id || '' }}\",     \"customer_name\": \"{{ $json.client || '' }}\",     \"project_name\": \"\",     \"submission_deadline\": \"\",     \"industry\": \"FMCG\",     \"notes\": \"\"   },   \"requirements\": [] }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        32,
+        32
+      ],
+      "id": "4e8ece43-53fd-4fd1-8a94-62c0c5fa631b",
+      "name": "RFP Analyst"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"rfp_metadata\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"rfp_id\": { \"type\": \"string\" },\n        \"customer_name\": { \"type\": \"string\" },\n        \"project_name\": { \"type\": \"string\" },\n        \"submission_deadline\": { \"type\": \"string\" },\n        \"industry\": { \"type\": \"string\" },\n        \"notes\": { \"type\": \"string\" }\n      },\n      \"required\": [\"rfp_id\", \"customer_name\", \"project_name\"]\n    },\n    \"requirements\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"req_id\": { \"type\": \"string\" },\n          \"section\": { \"type\": \"string\" },\n          \"clause_ref\": { \"type\": \"string\" },\n          \"description\": { \"type\": \"string\" },\n          \"must_have\": { \"type\": \"boolean\" },\n          \"category\": { \"type\": \"string\" },\n          \"target_value\": { \"type\": \"string\" },\n          \"unit\": { \"type\": \"string\" },\n          \"priority\": {\n            \"type\": \"string\",\n            \"enum\": [\"High\", \"Medium\", \"Low\"]\n          }\n        },\n        \"required\": [\"req_id\", \"description\", \"must_have\", \"priority\"]\n      }\n    }\n  },\n  \"required\": [\"rfp_metadata\", \"requirements\"]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        224
+      ],
+      "id": "f8683039-4c5e-4b1a-833d-94b151b67a1e",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: RFP Analyst output as a string in items[0].json.data (depends on your config)\nconst raw = $json;  // adjust if needed\n\n// If the model already returns JSON, you might not need this at all.\n// But if response is under `raw.data`, `raw.answer`, etc., parse:\nlet parsed;\nif (typeof raw === 'string') {\n  parsed = JSON.parse(raw);\n} else {\n  parsed = raw;\n}\n\nreturn [{\n  json: parsed\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -368
+      ],
+      "id": "26f140e3-3b9d-49ba-a1b4-846f1259cc0b",
+      "name": "Parse RFP JSON"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        608,
+        -32
+      ],
+      "id": "ea4e2dd2-121a-4ec5-aeb8-8645f9d0ce81",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1NeadX4RZpm-I-ZpUkRV-O084zuEb033v_WYOMxel6rg",
+          "mode": "list",
+          "cachedResultName": "Product Data Tables",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NeadX4RZpm-I-ZpUkRV-O084zuEb033v_WYOMxel6rg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "SKU_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NeadX4RZpm-I-ZpUkRV-O084zuEb033v_WYOMxel6rg/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        800,
+        128
+      ],
+      "id": "74bbf805-4685-4946-ab2d-2ef17c722439",
+      "name": "Get SKUs",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VrgGB1seB0PoTNWJ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Requirement object:\n{{ JSON.stringify($json, null, 2) }}\n\nCandidate SKUs:\n{{ JSON.stringify($items(\"Get SKUs\").map(i => i.json), null, 2) }}\n\nReturn ONLY valid JSON as per the required schema.\n",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are the Technical Agent in a multi-agent RFP evaluation workflow.  You receive: - One requirement object (req_id, description, target_value, category, etc.) - A list of candidate SKUs (sku_id, product_name, category, segment, key_specs)  Your tasks: 1. Evaluate how well each SKU matches the requirement. 2. Assign a spec_match_score between 0 and 1. 3. Select the top 1–3 SKUs with the highest score. 4. Provide a short explanation and mention any gaps or risks. 5. NEVER invent product specs. Only use the provided SKU data.  IMPORTANT RULES (do not break these): - RESPOND WITH **ONLY VALID JSON**. - DO NOT wrap JSON in markdown, code fences, or backticks. - DO NOT add extra text, comments, explanations, or fields. - EXACT output schema (do not change it):  {   \"matches\": [     {       \"req_id\": \"string\",       \"requirement_description\": \"string\",       \"suggested_skus\": [         {           \"sku_id\": \"string\",           \"product_name\": \"string\",           \"spec_match_score\": 0.0,           \"match_explanation\": \"string\",           \"gaps_or_risks\": \"string\"         }       ]     }   ] }  If you cannot evaluate due to missing SKU data, return an empty suggested_skus array. Return ONLY JSON that conforms to the JSON schema. Do NOT use markdown or code fences."
+            }
+          ]
+        },
+        "batching": {
+          "batchSize": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1184,
+        32
+      ],
+      "id": "bfe0ebe9-2984-46ed-9978-13b313e40e12",
+      "name": "Technical Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        -176
+      ],
+      "id": "b3bedf80-43b4-4e23-a5b3-94f7d31bd39b",
+      "name": "Wait",
+      "webhookId": "d8e54d38-4982-4952-9715-c6140b378c2e"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"matches\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"req_id\": { \"type\": \"string\" },\n          \"requirement_description\": { \"type\": \"string\" },\n          \"suggested_skus\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"sku_id\": { \"type\": \"string\" },\n                \"product_name\": { \"type\": \"string\" },\n                \"spec_match_score\": { \"type\": \"number\" },\n                \"match_explanation\": { \"type\": \"string\" },\n                \"gaps_or_risks\": { \"type\": \"string\" }\n              },\n              \"required\": [\n                \"sku_id\",\n                \"product_name\",\n                \"spec_match_score\",\n                \"match_explanation\",\n                \"gaps_or_risks\"\n              ]\n            }\n          }\n        },\n        \"required\": [\n          \"req_id\",\n          \"requirement_description\",\n          \"suggested_skus\"\n        ]\n      }\n    }\n  },\n  \"required\": [\"matches\"]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1408,
+        192
+      ],
+      "id": "7e119942-d705-44c4-b53c-533ced3e3fdd",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Selections:\n{{ JSON.stringify($json[\"selections\"], null, 2) }}\n\nPricing DB:\n{{ JSON.stringify($items(\"Get Pricing\").map(i => i.json), null, 2) }}\n\nReturn JSON as per schema.\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are the Pricing Agent in a multi-agent RFP system.  You receive: - selections[]: each item = { req_id, requirement_description, sku_id, product_name, spec_match_score, quantity } - pricing_db[]: each item = { sku_id, base_cost, min_margin_pct, standard_margin_pct }  Tasks: 1. For each selection, find the matching sku_id in pricing_db. 2. Use standard_margin_pct as default margin. 3. Compute:    - unit_price = base_cost * (1 + margin_pct)    - extended_cost = base_cost * quantity    - extended_price = unit_price * quantity 4. Aggregate totals:    - material_cost = sum of extended_cost    - total_price = sum of extended_price    - overall_margin_pct =(total_price - material_cost)/material_cost  If a sku_id is missing from pricing_db, skip it and add a note in assumptions.  Output JSON only in this schema:  {   \"line_items\": [     {       \"req_id\": \"string\",       \"sku_id\": \"string\",       \"product_name\": \"string\",       \"quantity\": 0,       \"unit_cost\": 0.0,       \"unit_price\": 0.0,       \"margin_pct\": 0.0,       \"extended_cost\": 0.0,       \"extended_price\": 0.0     }   ],   \"totals\": {     \"material_cost\": 0.0,     \"total_price\": 0.0,     \"overall_margin_pct\": 0.0   },   \"assumptions\": [     \"string\"   ] }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2160,
+        32
+      ],
+      "id": "b3c130c3-309f-4193-9c03-22f31ab3d8de",
+      "name": "Pricing Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=RFP Metadata:\n{{ JSON.stringify($items(\"Parse RFP JSON\")[0].json.rfp_metadata, null, 2) }}\n\nTechnical Matches (short):\n{{ JSON.stringify($items(\"Merge Technical\")[0].json.technical_matches || [], null, 2) }}\n\nPricing:\n{{ JSON.stringify($items(\"Pricing Agent\")[0].json, null, 2) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are the Sales / Competitive Agent in a multi-agent RFP system for an FMEG/FMCG manufacturer.  You receive: - rfp_metadata - technical_matches (summary of requirements and chosen SKUs) - pricing summary (line_items + totals)  Your task: - Create a persuasive but concise sales summary in JSON form:  {   \"exec_summary\": \"string\",   \"value_drivers\": [\"string\"],   \"risk_mitigation\": \"string\",   \"closing_paragraph\": \"string\" }  Do NOT include markdown or extra commentary. Just return JSON."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2608,
+        32
+      ],
+      "id": "21231cb1-2533-40ed-a8dc-f1e2c7c85fe4",
+      "name": "Sales Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const analysis = $items(\"Parse RFP JSON\")[0].json;\nconst technical = $items(\"Merge Technical\")[0].json.technical_matches;\nconst pricing = $items(\"Pricing Agent\")[0].json;\nconst sales = $items(\"Sales Agent\")[0].json;\n\nreturn [{\n  json: {\n    analysis,\n    technical_matches: technical,\n    pricing,\n    sales_summary: sales\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2896,
+        32
+      ],
+      "id": "25c5472f-399b-4d94-9d50-9780ea7aee90",
+      "name": "Build final response"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of items) {\n  const ks = item.json.key_specs;\n\n  // Only parse if it's a string containing JSON\n  if (typeof ks === \"string\") {\n    try {\n      item.json.key_specs = JSON.parse(ks);\n    } catch (e) {\n      // leave it as-is if parsing fails\n    }\n  }\n}\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        -16
+      ],
+      "id": "f593c25f-25b6-4c9d-95d9-bdf28d999c33",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"rfp_metadata\": {{ $json.output.rfp_metadata }},\n  \"requirements\": {{ $json.output.requirements }},\n  \"execution_id\": \"{{ $node['Webhook'].json.body.execution_id }}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        32
+      ],
+      "id": "14be73fe-9a0b-42a0-acfe-faebe2c86490",
+      "name": "Attach execution_id"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        32,
+        224
+      ],
+      "id": "6dd164c1-f06b-4cc9-be88-cfe97a06955b",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "qZ3bEqbrFMoP6TEj",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        192
+      ],
+      "id": "7e917a4c-8801-48a8-8788-c0ee1089f186",
+      "name": "OpenRouter Chat Model2",
+      "credentials": {
+        "openRouterApi": {
+          "id": "qZ3bEqbrFMoP6TEj",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2704,
+        192
+      ],
+      "id": "985143e1-ae99-4a22-8b6c-c41739cfe350",
+      "name": "OpenRouter Chat Model3",
+      "credentials": {
+        "openRouterApi": {
+          "id": "qZ3bEqbrFMoP6TEj",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        192
+      ],
+      "id": "bb9518a7-65ef-478d-a315-f839991f8fd4",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "qZ3bEqbrFMoP6TEj",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"selections\": {{ $items().map(i => i.json) }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1984,
+        32
+      ],
+      "id": "5e8c91f9-711d-44f2-a737-32e04cf218d7",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1NeadX4RZpm-I-ZpUkRV-O084zuEb033v_WYOMxel6rg",
+          "mode": "list",
+          "cachedResultName": "Product Data Tables",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NeadX4RZpm-I-ZpUkRV-O084zuEb033v_WYOMxel6rg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 714086121,
+          "mode": "list",
+          "cachedResultName": "PRICING_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NeadX4RZpm-I-ZpUkRV-O084zuEb033v_WYOMxel6rg/edit#gid=714086121"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1824,
+        32
+      ],
+      "id": "0c9f112f-8a93-483f-8fec-3e3525af3375",
+      "name": "Get Pricing",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VrgGB1seB0PoTNWJ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Take the first LLM response (they are usually duplicates / retries)\nconst raw = items[0].json.text;\n\n// Parse the JSON string safely\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (e) {\n  throw new Error(\"Pricing Agent returned invalid JSON\");\n}\n\n// Basic sanity checks (optional but recommended)\nif (!parsed.line_items || !parsed.totals) {\n  throw new Error(\"Pricing Agent JSON missing required fields\");\n}\n\nreturn [\n  {\n    json: parsed\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        32
+      ],
+      "id": "e936ae45-2be2-43ef-9b89-731ecb119a98",
+      "name": "Parse Pricing Output"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "meta = None\nmatches_list = []\n\nfor item in items:\n    data = item[\"json\"]\n\n    # Check for metadata\n    if \"output\" in data and \"rfp_metadata\" in data[\"output\"]:\n        meta = data[\"output\"][\"rfp_metadata\"]\n\n    # Check for technical matches\n    if \"output\" in data and \"matches\" in data[\"output\"]:\n        matches_list.extend(data[\"output\"][\"matches\"])\n\n\n# Build selections\nselections = []\n\nfor m in matches_list:\n    suggested = m.get(\"suggested_skus\", [])\n\n    if suggested:\n        best = sorted(\n            suggested,\n            key=lambda x: x.get(\"spec_match_score\", 0),\n            reverse=True\n        )[0]\n\n        selections.append({\n            \"req_id\": m[\"req_id\"],\n            \"requirement_description\": m[\"requirement_description\"],\n            \"sku_id\": best.get(\"sku_id\"),\n            \"product_name\": best.get(\"product_name\"),\n            \"spec_match_score\": best.get(\"spec_match_score\", 0),\n            \"quantity\": 100\n        })\n    else:\n        selections.append({\n            \"req_id\": m[\"req_id\"],\n            \"requirement_description\": m[\"requirement_description\"],\n            \"sku_id\": None,\n            \"product_name\": None,\n            \"spec_match_score\": 0,\n            \"quantity\": 100\n        })\n\n# Final response\nreturn {\n    \"json\": {\n        \"rfp_metadata\": meta,\n        \"selections\": selections\n    }\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        -80
+      ],
+      "id": "15dfabdf-bfb6-4963-b672-0ac0d644d4e4",
+      "name": "Merge Technical"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1456,
+        -176
+      ],
+      "id": "a7a3064f-b75f-4640-91be-d4d7e054b84b",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "RFP Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "RFP Analyst",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RFP Analyst": {
+      "main": [
+        [
+          {
+            "node": "Attach execution_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse RFP JSON": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get SKUs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get SKUs": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Technical Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Technical Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pricing Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Pricing Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sales Agent": {
+      "main": [
+        [
+          {
+            "node": "Build final response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Technical Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build final response": {
+      "main": [
+        []
+      ]
+    },
+    "Attach execution_id": {
+      "main": [
+        [
+          {
+            "node": "Parse RFP JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "RFP Analyst",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Pricing Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Sales Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Technical Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Pricing Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pricing": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Pricing Output": {
+      "main": [
+        [
+          {
+            "node": "Sales Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Technical": {
+      "main": [
+        [
+          {
+            "node": "Get Pricing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Merge Technical",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4a39b06b-5e04-4029-b234-4f759f63fe45",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "53a19b8743a832a3badbb9bdb61f7b3fb770b8005844ca8ad7d286429e5b5bb5"
+  },
+  "id": "saIwRRIMO7zDsVCd",
+  "tags": []
+}
